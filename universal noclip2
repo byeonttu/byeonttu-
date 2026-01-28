@@ -1,0 +1,48 @@
+local P, U, R = game:GetService("Players"), game:GetService("UserInputService"), game:GetService("RunService")
+local LP, Mouse, Cam = P.LocalPlayer, P.LocalPlayer:GetMouse(), workspace.CurrentCamera
+local S = {Fly = false, ESP = false, SA = false, NC = false}
+
+local G = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local F = Instance.new("Frame", G)
+F.Size, F.Position, F.BackgroundColor3, F.Active, F.Draggable = UDim2.new(0,200,0,200), UDim2.new(0.5,-100,0.5,-100), Color3.new(0,0,0), true, true
+local L = Instance.new("UIListLayout", F)
+
+local function btn(t, v)
+    local b = Instance.new("TextButton", F)
+    b.Size, b.Text, b.BackgroundColor3, b.TextColor3 = UDim2.new(1,0,0,45), t.." : OFF", Color3.new(0.2,0.2,0.2), Color3.new(1,1,1)
+    b.MouseButton1Click:Connect(function()
+        S[v] = not S[v]
+        b.Text = t.." : "..(S[v] and "ON" or "OFF")
+        b.BackgroundColor3 = S[v] and Color3.new(0,0.5,1) or Color3.new(0.2,0.2,0.2)
+    end)
+end
+
+-- 딱 필요한 버튼 4개만 남김
+btn("FLY", "Fly") 
+btn("ESP", "ESP") 
+btn("SILENT AIM", "SA") 
+btn("NOCLIP", "NC")
+
+local old; old = hookmetamethod(game, "__namecall", function(self, ...)
+    local m = getnamecallmethod()
+    if S.SA and self == Mouse and (m == "Hit" or m == "Target") then
+        local t, d = nil, 500
+        for _, p in pairs(P:GetPlayers()) do
+            if p ~= LP and p.Character and p.Character:FindFirstChild("Head") then
+                local ppos = Cam:WorldToViewportPoint(p.Character.Head.Position)
+                local mag = (Vector2.new(ppos.X, ppos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if ppos.Z > 0 and mag < d then t, d = p.Character.Head, mag end
+            end
+        end
+        if t then return (m == "Hit" and t.CFrame or t) end
+    end
+    return old(self, ...)
+end)
+
+R.RenderStepped:Connect(function()
+    if S.NC and LP.Character then for _, v in pairs(LP.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
+    if S.ESP then for _, p in pairs(P:GetPlayers()) do if p ~= LP and p.Character and not p.Character:FindFirstChild("E") then Instance.new("Highlight", p.Character).Name = "E" end end
+    else for _, p in pairs(P:GetPlayers()) do if p.Character and p.Character:FindFirstChild("E") then p.Character.E:Destroy() end end end
+end)
+
+U.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.RightShift then F.Visible = not F.Visible end end)
